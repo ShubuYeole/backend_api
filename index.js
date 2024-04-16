@@ -130,6 +130,8 @@ const rentEVSchema = new mongoose.Schema({
   batteryPower: String,
   kilometresDriven: String,
   image: String, // For simplicity, store image URL
+  bodyType: String,
+  price: String
 });
 
 // Define a model based on the schema
@@ -427,6 +429,8 @@ app.post('/api/rentev', cors(), upload.single('image'), async (req, res) => {
       batteryPower: req.body.batteryPower,
       kilometresDriven: req.body.kilometresDriven,
       image: req.file.path, // Save image path
+      bodyType: req.body.bodyType,
+      price: req.body.price
     });
 
 
@@ -462,6 +466,72 @@ app.get('/api/view/rentev', cors(), async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+
+
+
+
+// Renterals flow to check for the required time and price accordingly
+
+// Define rental schema and model
+const rentalSchema = new mongoose.Schema({
+  startDate: Date,
+  startTime: String,
+  endDate: Date,
+  location: String,
+  // Add more fields as needed
+  price: Number // Add price field to store calculated price
+});
+
+const Rental = mongoose.model('Rental', rentalSchema);
+
+// Define API endpoint for creating a new rental
+app.post('/api/rentals', cors(), async (req, res) => {
+  try {
+    // Calculate the price based on rental duration, vehicle type, etc.
+    const price = calculatePrice(req.body.startDate, req.body.endDate, req.body.vehicleType);
+    
+    // Create a new rental object with form data and calculated price
+    const newRental = new Rental({
+      ...req.body,
+      price: price
+    });
+
+    // Save the rental data to the database
+    await newRental.save();
+
+    res.status(201).json(newRental);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// API endpoint to view submitted rental data
+app.get('/api/rentals', cors(), async (req, res) => {
+  try {
+    // Fetch all rental data from the database
+    const rentalData = await Rental.find();
+    res.status(200).json(rentalData);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
+// Function to calculate the price based on rental duration and vehicle type
+function calculatePrice(startDate, endDate, vehicleType) {
+  // Add your logic to calculate the price here
+  // Example: calculate price based on duration and vehicle type
+  // For demonstration, let's assume a flat rate of $50 per day for all vehicle types
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const durationInDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  const basePricePerDay = 50; // Base price per day for all vehicle types
+  const totalPrice = durationInDays * basePricePerDay;
+
+  return totalPrice;
+}
+
 
 
 
